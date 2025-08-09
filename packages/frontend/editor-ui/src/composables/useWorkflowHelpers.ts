@@ -114,6 +114,27 @@ export function resolveParameter<T = IDataObject>(
 	);
 }
 
+function resolveParameterFromUiContext<T = IDataObject>(
+	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
+	activeNode: INodeUi | null,
+): T | null {
+	// This function handles the simple case of resolving a $parameter in the UI editor.
+	if (!activeNode || typeof parameter !== 'string' || !parameter.includes('$parameter')) {
+		return '' as T;
+	}
+
+	// Extract the parameter name from an expression like '={{$parameter["path"]}}'
+	const parameterName = parameter.match(/\$parameter\["(.+?)"\]/)?.[1];
+
+	if (parameterName && activeNode.parameters[parameterName] !== undefined) {
+		// If the parameter exists on the active node, return its value.
+		return activeNode.parameters[parameterName] as T;
+	}
+
+	// Return a safe default if the parameter is not found.
+	return '' as T;
+}
+
 // TODO: move to separate file
 function resolveParameterImpl<T = IDataObject>(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
@@ -126,6 +147,10 @@ function resolveParameterImpl<T = IDataObject>(
 	pinData: IPinData | undefined,
 	opts: ResolveParameterOptions = {},
 ): T | null {
+	if (!executionData) {
+		return resolveParameterFromUiContext(parameter, ndvActiveNode);
+	}
+
 	let itemIndex = opts?.targetItem?.itemIndex || 0;
 
 	const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
@@ -1095,3 +1120,8 @@ export function useWorkflowHelpers() {
 		checkConflictingWebhooks,
 	};
 }
+
+/** Test-only hook (non-public) */
+export const __test__ = {
+  resolveParameterFromUiContext,
+};
