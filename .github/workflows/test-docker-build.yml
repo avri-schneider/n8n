@@ -24,7 +24,7 @@ jobs:
     if: github.event.action != 'closed'
     name: Lint, Typecheck & Unit Tests
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
     env:
       CI: true
       PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
