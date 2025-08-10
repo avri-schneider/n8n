@@ -126,7 +126,6 @@ jobs:
           load: false
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          build-record: false
           provenance: false
 
       - name: Test Docker image from GHCR
@@ -180,11 +179,11 @@ jobs:
           TAG="pr-${{ github.event.pull_request.number }}"
           IMAGE="${{ github.repository_owner }}/n8n"
           echo "Fetching manifest digest for $IMAGE:$TAG from GHCR..."
-          DIGEST=$(curl -s \
+          DIGEST=$(curl -sI \
             -H "Accept: application/vnd.oci.image.manifest.v1+json" \
             -H "Authorization: Bearer $GHCR_TOKEN" \
             "https://ghcr.io/v2/${IMAGE}/manifests/${TAG}" \
-            | jq -r '.config.digest' || echo "")
+            | grep -i 'docker-content-digest:' | awk '{print $2}' | tr -d $'\r')
           if [ -z "$DIGEST" ] || [ "$DIGEST" = "null" ]; then
             echo "❌ Could not find digest for tag $TAG. Tag may not exist."
             exit 0
@@ -218,11 +217,11 @@ jobs:
           echo "$TAGS"
           for TAG in $TAGS; do
             echo "Fetching digest for $TAG..."
-            DIGEST=$(curl -s \
+            DIGEST=$(curl -sI \
               -H "Accept: application/vnd.oci.image.manifest.v1+json" \
               -H "Authorization: Bearer $GHCR_TOKEN" \
               "https://ghcr.io/v2/${IMAGE}/manifests/${TAG}" \
-              | jq -r '.config.digest' || echo "")
+              | grep -i 'docker-content-digest:' | awk '{print $2}' | tr -d $'\r')
             if [ -n "$DIGEST" ] && [ "$DIGEST" != "null" ]; then
               echo "Deleting $IMAGE@$DIGEST..."
               curl -s -X DELETE \
