@@ -65,7 +65,7 @@ import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { findWebhook } from '@n8n/rest-api-client/api/webhooks';
 import type { ExpressionLocalResolveContext } from '@/types/expressions';
 
-export type ResolveParameterOptions = {
+export type ResolveParameterOptions<T = unknown> = {
 	targetItem?: TargetItem;
 	inputNodeName?: string;
 	inputRunIndex?: number;
@@ -77,11 +77,17 @@ export type ResolveParameterOptions = {
 
 	/** When true and no execution data exists, try a UI-only $parameter[...] preview */
 	uiPreviewParamOnly?: boolean;
+
+	/**
+	 * Optional type guard to allow a type-safe early return from the UI-only preview path.
+	 * When provided, the previewed value will be returned only if this guard passes.
+	 */
+	uiPreviewGuard?: (v: unknown) => v is T;
 };
 
 export function resolveParameter<T = IDataObject>(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
-	opts: ResolveParameterOptions | ExpressionLocalResolveContext = {},
+	opts: ResolveParameterOptions<T> | ExpressionLocalResolveContext = {},
 ): T | null {
 	if ('localResolve' in opts && opts.localResolve) {
 		return resolveParameterImpl(
@@ -113,7 +119,7 @@ export function resolveParameter<T = IDataObject>(
 		workflowsStore.workflowExecutionData,
 		workflowsStore.shouldReplaceInputDataWithPinData,
 		workflowsStore.pinnedWorkflowData,
-		opts,
+		opts as ResolveParameterOptions<T>,
 	);
 }
 
@@ -121,10 +127,10 @@ export function resolveParameter<T = IDataObject>(
  * UI-only helper to preview a `{{ $parameter["..."] }}` expression from `activeNode.parameters`
  * when no execution data is available. Returns `null` if not a pure `$parameter[...]` expression.
  */
-function resolveParameterFromUiContext<T>(
+function resolveParameterFromUiContext(
 	parameter: NodeParameterValue,
 	activeNode: INodeUi | null,
-): T | null {
+): NodeParameterValue | null {
 	if (!activeNode || typeof parameter !== 'string') return null;
 
 	// Require the entire string to be exactly a {{ $parameter["..."] }} expression
@@ -132,7 +138,7 @@ function resolveParameterFromUiContext<T>(
 	if (!m) return null;
 
 	const value = (activeNode.parameters ?? {})[m[1]];
-	return value === undefined ? null : (value as T);
+	return value === undefined ? null : value;
 }
 
 // TODO: move to separate file
@@ -145,12 +151,16 @@ function resolveParameterImpl<T = IDataObject>(
 	executionData: IExecutionResponse | null,
 	shouldReplaceInputDataWithPinData: boolean,
 	pinData: IPinData | undefined,
-	opts: ResolveParameterOptions = {},
+	opts: ResolveParameterOptions<T> = {},
 ): T | null {
 	if (!executionData && opts.uiPreviewParamOnly === true && typeof parameter !== 'object') {
-		const uiVal = resolveParameterFromUiContext<T>(parameter, ndvActiveNode);
-		if (uiVal !== null) return uiVal;
+		const uiVal = resolveParameterFromUiContext(parameter, ndvActiveNode);
+		// Only allow early return if a guard is provided and it passes — no unchecked assertions.
+		if (uiVal !== null && typeof opts.uiPreviewGuard === 'function' && opts.uiPreviewGuard(uiVal)) {
+			return uiVal;
+		}
 	}
+
 	let itemIndex = opts?.targetItem?.itemIndex || 0;
 
 	const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
