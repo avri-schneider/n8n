@@ -147,9 +147,9 @@ function resolveParameterImpl<T = IDataObject>(
 	pinData: IPinData | undefined,
 	opts: ResolveParameterOptions = {},
 ): T | null {
-	if (!executionData && (opts as ResolveParameterOptions).uiPreviewParamOnly === true) {
-	  const uiVal = resolveParameterFromUiContext<T>(parameter as NodeParameterValue, ndvActiveNode);
-	  if (uiVal !== null) return uiVal; // only short-circuit if it *is* a $parameter[...] expr
+	if (!executionData && opts.uiPreviewParamOnly === true && typeof parameter !== 'object') {
+		const uiVal = resolveParameterFromUiContext<T>(parameter, ndvActiveNode);
+		if (uiVal !== null) return uiVal;
 	}
 	let itemIndex = opts?.targetItem?.itemIndex || 0;
 
