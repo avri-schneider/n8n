@@ -74,6 +74,9 @@ export type ResolveParameterOptions = {
 	isForCredential?: boolean;
 	contextNodeName?: string;
 	connections?: IConnections;
+
+	/** When true and no execution data exists, try a UI-only $parameter[...] preview */
+	uiPreviewParamOnly?: boolean;
 };
 
 export function resolveParameter<T = IDataObject>(
@@ -114,6 +117,24 @@ export function resolveParameter<T = IDataObject>(
 	);
 }
 
+/**
+ * UI-only helper to preview a `{{ $parameter["..."] }}` expression from `activeNode.parameters`
+ * when no execution data is available. Returns `null` if not a pure `$parameter[...]` expression.
+ */
+function resolveParameterFromUiContext<T>(
+	parameter: NodeParameterValue,
+	activeNode: INodeUi | null,
+): T | null {
+	if (!activeNode || typeof parameter !== 'string') return null;
+
+	// Require the entire string to be exactly a {{ $parameter["..."] }} expression
+	const m = parameter.match(/^\s*\{\{\s*\$parameter\["(.+?)"\]\s*\}\}\s*$/);
+	if (!m) return null;
+
+	const value = (activeNode.parameters ?? {})[m[1]];
+	return value === undefined ? null : (value as T);
+}
+
 // TODO: move to separate file
 function resolveParameterImpl<T = IDataObject>(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
@@ -126,6 +147,10 @@ function resolveParameterImpl<T = IDataObject>(
 	pinData: IPinData | undefined,
 	opts: ResolveParameterOptions = {},
 ): T | null {
+	if (!executionData && (opts as ResolveParameterOptions).uiPreviewParamOnly === true) {
+	  const uiVal = resolveParameterFromUiContext<T>(parameter as NodeParameterValue, ndvActiveNode);
+	  if (uiVal !== null) return uiVal; // only short-circuit if it *is* a $parameter[...] expr
+	}
 	let itemIndex = opts?.targetItem?.itemIndex || 0;
 
 	const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
@@ -1095,3 +1120,8 @@ export function useWorkflowHelpers() {
 		checkConflictingWebhooks,
 	};
 }
+
+/** Test-only hook (non-public) */
+export const __test__ = {
+  resolveParameterFromUiContext,
+};
