@@ -49,7 +49,7 @@ jobs:
         run: pnpm -w lint
 
       - name: Typecheck
-        run: pnpm -w typecheck || true
+        run: pnpm -w typecheck
 
       - name: Show workspace packages
         run: pnpm -w list --depth -1
