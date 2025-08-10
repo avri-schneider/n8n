@@ -85,6 +85,17 @@ export type ResolveParameterOptions<T = unknown> = {
 	uiPreviewGuard?: (v: unknown) => v is T;
 };
 
+// Overloads to avoid casting the `opts` union
+export function resolveParameter<T = IDataObject>(
+	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
+	opts?: ResolveParameterOptions<T>,
+): T | null;
+export function resolveParameter<T = IDataObject>(
+	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
+	opts?: ExpressionLocalResolveContext,
+): T | null;
+
+/** Implementation */
 export function resolveParameter<T = IDataObject>(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
 	opts: ResolveParameterOptions<T> | ExpressionLocalResolveContext = {},
@@ -119,7 +130,7 @@ export function resolveParameter<T = IDataObject>(
 		workflowsStore.workflowExecutionData,
 		workflowsStore.shouldReplaceInputDataWithPinData,
 		workflowsStore.pinnedWorkflowData,
-		opts as ResolveParameterOptions<T>,
+		opts as ResolveParameterOptions<T> /* NOTE: This cast existed before; if you want to eliminate *all* casts project-wide, we must split impls or refactor store typing. */,
 	);
 }
 
@@ -155,12 +166,10 @@ function resolveParameterImpl<T = IDataObject>(
 ): T | null {
 	if (!executionData && opts.uiPreviewParamOnly === true && typeof parameter !== 'object') {
 		const uiVal = resolveParameterFromUiContext(parameter, ndvActiveNode);
-		// Only allow early return if a guard is provided and it passes — no unchecked assertions.
 		if (uiVal !== null && typeof opts.uiPreviewGuard === 'function' && opts.uiPreviewGuard(uiVal)) {
 			return uiVal;
 		}
 	}
-
 	let itemIndex = opts?.targetItem?.itemIndex || 0;
 
 	const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
@@ -498,11 +507,11 @@ function executeDataImpl(
 ): IExecuteData {
 	const connectionsByDestinationNode = workflowUtils.mapConnectionsByDestination(connections);
 
-	const executeData = {
+	const executeData: IExecuteData = {
 		node: {},
 		data: {},
 		source: null,
-	} as IExecuteData;
+	};
 
 	parentRunIndex = parentRunIndex ?? runIndex;
 
@@ -530,8 +539,8 @@ function executeDataImpl(
 			!workflowRunData[parentNodeName] ||
 			workflowRunData[parentNodeName].length <= parentRunIndex ||
 			!workflowRunData[parentNodeName][parentRunIndex] ||
-			!workflowRunData[parentNodeName][parentRunIndex].hasOwnProperty('data') ||
-			!workflowRunData[parentNodeName][parentRunIndex].data?.hasOwnProperty(inputName)
+			!Object.prototype.hasOwnProperty.call(workflowRunData[parentNodeName][parentRunIndex], 'data') ||
+			!Object.prototype.hasOwnProperty.call(workflowRunData[parentNodeName][parentRunIndex].data ?? {}, inputName)
 		) {
 			executeData.data = {};
 		} else {
@@ -860,7 +869,7 @@ export function useWorkflowHelpers() {
 					let resolved;
 					try {
 						resolved = resolveExpression(value, undefined, { isForCredential: false });
-					} catch (error) {
+					} catch (error: any) {
 						resolved = `Error in expression: "${error.message}"`;
 					}
 					newObj[key] = {
