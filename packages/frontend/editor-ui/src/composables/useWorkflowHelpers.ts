@@ -65,42 +65,18 @@ import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { findWebhook } from '@n8n/rest-api-client/api/webhooks';
 import type { ExpressionLocalResolveContext } from '@/types/expressions';
 
-export type ResolveParameterOptions<T = unknown> = {
-	targetItem?: TargetItem;
-	inputNodeName?: string;
-	inputRunIndex?: number;
-	inputBranchIndex?: number;
-	additionalKeys?: IWorkflowDataProxyAdditionalKeys;
-	isForCredential?: boolean;
-	contextNodeName?: string;
-	connections?: IConnections;
+// Type guard to discriminate ExpressionLocalResolveContext at runtime
+function isExpressionLocalResolveContext(
+	value: ResolveParameterOptions<unknown> | ExpressionLocalResolveContext | undefined,
+): value is ExpressionLocalResolveContext {
+	return !!value && typeof value === 'object' && 'localResolve' in value && value.localResolve === true;
+}
 
-	/** When true and no execution data exists, try a UI-only $parameter[...] preview */
-	uiPreviewParamOnly?: boolean;
-
-	/**
-	 * Optional type guard to allow a type-safe early return from the UI-only preview path.
-	 * When provided, the previewed value will be returned only if this guard passes.
-	 */
-	uiPreviewGuard?: (v: unknown) => v is T;
-};
-
-// Overloads to avoid casting the `opts` union
 export function resolveParameter<T = IDataObject>(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
-	opts?: ResolveParameterOptions<T>,
-): T | null;
-export function resolveParameter<T = IDataObject>(
-	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
-	opts?: ExpressionLocalResolveContext,
-): T | null;
-
-/** Implementation */
-export function resolveParameter<T = IDataObject>(
-	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
-	opts: ResolveParameterOptions<T> | ExpressionLocalResolveContext = {},
+	opts?: ResolveParameterOptions<T> | ExpressionLocalResolveContext,
 ): T | null {
-	if ('localResolve' in opts && opts.localResolve) {
+	if (isExpressionLocalResolveContext(opts)) {
 		return resolveParameterImpl(
 			parameter,
 			opts.workflow,
@@ -121,6 +97,9 @@ export function resolveParameter<T = IDataObject>(
 
 	const workflowsStore = useWorkflowsStore();
 
+	// Narrow to ResolveParameterOptions<T> without casting
+	const options: ResolveParameterOptions<T> = opts ?? {};
+
 	return resolveParameterImpl(
 		parameter,
 		workflowsStore.workflowObject as Workflow,
@@ -130,7 +109,7 @@ export function resolveParameter<T = IDataObject>(
 		workflowsStore.workflowExecutionData,
 		workflowsStore.shouldReplaceInputDataWithPinData,
 		workflowsStore.pinnedWorkflowData,
-		opts as ResolveParameterOptions<T> /* NOTE: This cast existed before; if you want to eliminate *all* casts project-wide, we must split impls or refactor store typing. */,
+		options,
 	);
 }
 
