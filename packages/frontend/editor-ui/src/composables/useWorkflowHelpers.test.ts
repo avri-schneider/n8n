@@ -1056,7 +1056,7 @@ describe('UI-only $parameter[...] resolution', () => {
       typeVersion: 1,
       position: [0, 0],
       parameters,
-		} as unknown as INodeUi;
+		} as INodeUi;
   }
 
   it('returns the parameter value for {{ $parameter["key"] }}', () => {
