@@ -1,4 +1,4 @@
-name: Test & (optionally) Build Docker Image
+name: "Test & (optionally) Build Docker Image"
 
 on:
   pull_request:
