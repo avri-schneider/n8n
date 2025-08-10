@@ -166,7 +166,7 @@ function resolveParameterImpl<T = IDataObject>(
 ): T | null {
 	if (!executionData && opts.uiPreviewParamOnly === true && typeof parameter !== 'object') {
 		const uiVal = resolveParameterFromUiContext(parameter, ndvActiveNode);
-		if (uiVal !== null && typeof opts.uiPreviewGuard === 'function' && opts.uiPreviewGuard(uiVal)) {
+		if (uiVal !== null && (typeof opts.uiPreviewGuard !== 'function' || opts.uiPreviewGuard(uiVal))) {
 			return uiVal;
 		}
 	}
