@@ -35,6 +35,8 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # pnpm/action-setup@v4
+        with:
+          version: 10.12.1
 
       - name: Setup Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # actions/setup-node@v4.4.0
@@ -71,6 +73,8 @@ jobs:
 
       - name: Set up pnpm
         uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # pnpm/action-setup@v4
+        with:
+          version: 10.12.1
 
       - name: Set up Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # actions/setup-node@v4.4.0
@@ -101,7 +105,7 @@ jobs:
           images: ghcr.io/${{ github.repository_owner }}/n8n
           tags: |
             type=raw,value=test-build
-            type=raw,value=latest
+            type=raw,value=latest,enable={{is_default_branch}}
             type=ref,event=pr,prefix=pr-
             type=ref,event=branch
             type=sha,format=short,prefix={{branch}}-
